@@ -12,6 +12,13 @@
 
 > 项目持续开发中，跟随课程进度逐步完善。
 
+## 课程进度
+
+| 文件 | 内容 |
+|------|------|
+| `s01.py` | 基础 Agent Loop — 最小化的多轮对话循环 |
+| `s02.py` | Tool Use — 在 s01 基础上增加 5 个工具（bash、read_file、write_file、edit_file、glob） |
+
 ## 快速开始
 
 ```bash
@@ -21,8 +28,11 @@ uv sync
 # 配置环境变量（参考 .env.example）
 cp .env.example .env
 
-# 运行
+# 运行基础版
 uv run python s01.py
+
+# 运行工具版
+uv run python s02.py
 ```
 
 ## 环境要求
