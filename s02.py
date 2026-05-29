@@ -185,8 +185,6 @@ def agent_loop(messages: list):
 
 
 if __name__ == "__main__":
-    print("s02: Tool Use — 在 s01 基础上加了 4 个工具")
-    print("输入问题，回车发送。输入 q 退出。\n")
 
     history = []
     while True:

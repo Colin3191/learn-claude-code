@@ -19,6 +19,7 @@
 | `s01.py` | 基础 Agent Loop — 最小化的多轮对话循环 |
 | `s02.py` | Tool Use — 在 s01 基础上增加 5 个工具（bash、read_file、write_file、edit_file、glob） |
 | `s03.py` | Todo 管理 — 在 s02 基础上增加 todo_write 工具，支持任务规划与进度追踪 |
+| `s04.py` | Subagent — 在 s03 基础上增加 task 工具，支持派生子代理处理复杂子任务 |
 
 ## 快速开始
 
