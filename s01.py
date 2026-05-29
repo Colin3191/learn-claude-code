@@ -5,10 +5,11 @@ import subprocess
 
 try:
     import readline
-    readline.parse_and_bind('set bind-tty-special-chars off')
-    readline.parse_and_bind('set input-meta on')
-    readline.parse_and_bind('set output-meta on')
-    readline.parse_and_bind('set convert-meta off')
+
+    readline.parse_and_bind("set bind-tty-special-chars off")
+    readline.parse_and_bind("set input-meta on")
+    readline.parse_and_bind("set output-meta on")
+    readline.parse_and_bind("set convert-meta off")
 except ImportError:
     pass
 
@@ -76,7 +77,7 @@ def agent_loop(messages: list):
                         "content": output,
                     }
                 )
-                messages.append({"role": "user", "content": results})
+        messages.append({"role": "user", "content": results})
 
 
 if __name__ == "__main__":
@@ -87,7 +88,7 @@ if __name__ == "__main__":
     while True:
         try:
             query = input("\033[36ms01 >> \033[0m")
-        except EOFError, KeyboardInterrupt:
+        except (EOFError, KeyboardInterrupt):
             break
         if query.strip().lower() in ("q", "exit", ""):
             break

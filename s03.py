@@ -19,10 +19,12 @@ load_dotenv(override=True)
 WORKDIR = Path.cwd()
 client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
 MODEL = os.environ["MODEL_ID"]
+CURRENT_TODOS: list[dict] = []
 
-SYSTEM = (
-    f"你是{WORKDIR}目录下的coding agent,请使用工具完成任务, 直接执行,无需额外说明。"
-)
+
+SYSTEM = f"""你是运行{WORKDIR}下的coding agent。
+请使用待办工具规划多步任务。任务开始前标记为进行中，完成后标记为已完成。
+优先使用工具操作，而非文字描述。"""
 
 
 def run_bash(command: str) -> str:
@@ -98,6 +100,27 @@ def run_glob(pattern: str) -> str:
         return f"Error: {e}"
 
 
+def run_todo_write(todos: list) -> str:
+    global CURRENT_TODOS
+
+    for i, t in enumerate(todos):
+        if "content" not in t or "status" not in t:
+            return f"Error: todos[{i}] missing 'content' or 'status'"
+        if t["status"] not in ("pending", "in_progress", "completed"):
+            return f"Error: todos[{i}] has invalid status '{t['status']}'"
+    CURRENT_TODOS = todos
+    lines = ["\n\033[33m## Current Tasks\033[0m"]
+    for t in CURRENT_TODOS:
+        icon = {
+            "pending": " ",
+            "in_progress": "\033[36m▸\033[0m",
+            "completed": "\033[32m✓\033[0m",
+        }[t["status"]]
+        lines.append(f"  [{icon}] {t['content']}")
+    print("\n".join(lines))
+    return f"Updated {len(CURRENT_TODOS)} tasks"
+
+
 TOOLS = [
     {
         "name": "bash",
@@ -148,6 +171,30 @@ TOOLS = [
             "required": ["pattern"],
         },
     },
+    {
+        "name": "todo_write",
+        "description": "Create and manage a task list for your current coding session.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "todos": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "content": {"type": "string"},
+                            "status": {
+                                "type": "string",
+                                "enum": ["pending", "in_progress", "completed"],
+                            },
+                        },
+                        "required": ["content", "status"],
+                    },
+                }
+            },
+            "required": ["todos"],
+        },
+    },
 ]
 
 TOOL_HANDLERS = {
@@ -156,23 +203,35 @@ TOOL_HANDLERS = {
     "write_file": run_write,
     "edit_file": run_edit,
     "glob": run_glob,
+    "todo_write": run_todo_write,
 }
+
+rounds_since_todo = 0
 
 
 def agent_loop(messages: list):
+    global rounds_since_todo
     while True:
+        if (rounds_since_todo) >= 3 and messages:
+            messages.append(
+                {"role": "user", "content": "<reminder>Update your todos.</reminder>"}
+            )
+            rounds_since_todo = 0
         response = client.messages.create(
             model=MODEL, system=SYSTEM, messages=messages, tools=TOOLS, max_tokens=8000
         )
         messages.append({"role": "assistant", "content": response.content})
         if response.stop_reason != "tool_use":
             return
+        rounds_since_todo += 1
         results = []
         for block in response.content:
             if block.type == "tool_use":
                 print(f"\033[33m$ {block.name}\033[0m")
                 handler = TOOL_HANDLERS.get(block.name)
                 output = handler(**block.input) if handler else f"Unknown: {block.name}"
+                if block.name == "todo_write":
+                    rounds_since_todo = 0
                 print(output[:200])
                 results.append(
                     {
@@ -191,7 +250,7 @@ if __name__ == "__main__":
     history = []
     while True:
         try:
-            query = input("\033[36ms02 >> \033[0m")
+            query = input("\033[36ms03 >> \033[0m")
         except (EOFError, KeyboardInterrupt):
             break
         if query.strip().lower() in ("q", "exit", ""):
