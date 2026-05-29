@@ -1,6 +1,6 @@
 # Learn Claude Code
 
-这是一个学习项目，跟随 [learn-claude-code](https://learn.shareai.run) 课程构建一个最小化的 AI Agent。
+这是一个学习项目，跟随 [learn-claude-code](https://github.com/shareAI-lab/learn-claude-code) 课程构建一个最小化的 AI Agent。
 
 ## 项目简介
 
@@ -11,10 +11,6 @@
 - 多轮对话管理
 
 > 项目持续开发中，跟随课程进度逐步完善。
-
-## 课程来源
-
-本项目基于 [learn-claude-code](https://learn.shareai.run) 课程内容编写。
 
 ## 快速开始
 
