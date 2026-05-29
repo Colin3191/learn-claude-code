@@ -20,6 +20,7 @@
 | `s02.py` | Tool Use — 在 s01 基础上增加 5 个工具（bash、read_file、write_file、edit_file、glob） |
 | `s03.py` | Todo 管理 — 在 s02 基础上增加 todo_write 工具，支持任务规划与进度追踪 |
 | `s04.py` | Subagent — 在 s03 基础上增加 task 工具，支持派生子代理处理复杂子任务 |
+| `s05.py` | Skills — 在 s04 基础上增加技能系统，支持从 skills/ 目录加载可扩展技能 |
 
 ## 快速开始
 

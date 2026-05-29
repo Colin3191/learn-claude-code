@@ -17,14 +17,69 @@ except ImportError:
 load_dotenv(override=True)
 
 WORKDIR = Path.cwd()
+SKILLS_DIR = WORKDIR / "skills"
 client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
 MODEL = os.environ["MODEL_ID"]
 CURRENT_TODOS: list[dict] = []
 
 
-SYSTEM = f"""你是运行{WORKDIR}下的coding agent。
-请使用待办工具规划多步任务。任务开始前标记为进行中，完成后标记为已完成。
-优先使用工具操作，而非文字描述。"""
+def _parse_frontmatter(text: str) -> tuple[dict, str]:
+    """Parse YAML frontmatter from SKILL.md. Returns (meta, body)."""
+    if not text.startswith("---"):
+        return ({}, text)
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return ({}, text)
+    meta = {}
+    for line in parts[1].strip().splitlines():
+        if ":" in line:
+            k, v = line.split(":", 1)
+            meta[k.strip()] = v.strip().strip('"').strip("'")
+    return (meta, parts[2].strip())
+
+
+SKILL_REGISTRY: dict[str, dict] = {}
+
+
+def _scan_skills():
+    """Scan skills/ dir, populate SKILL_REGISTRY with name/description/content."""
+    if not SKILLS_DIR.exists():
+        return
+    for d in sorted(SKILLS_DIR.iterdir()):
+        if not d.is_dir():
+            continue
+        manifest = d / "SKILL.md"
+        if manifest.exists():
+            raw = manifest.read_text()
+            meta, body = _parse_frontmatter(raw)
+            name = meta.get("name", d.name)
+            desc = meta.get("description", raw.split("\n")[0].lstrip("#").strip())
+            SKILL_REGISTRY[name] = {"name": name, "description": desc, "content": raw}
+
+
+_scan_skills()
+
+
+def list_skills() -> str:
+    """List all skills (name + one-line description)."""
+    if not SKILL_REGISTRY:
+        return "(no skills found)"
+    return "\n".join(
+        f"- **{s['name']}**: {s['description']}" for s in SKILL_REGISTRY.values()
+    )
+
+
+def build_system() -> str:
+    """Build SYSTEM prompt with skill catalog injected at startup."""
+    catalog = list_skills()
+    return (
+        f"You are a coding agent at {WORKDIR}. "
+        f"Skills available:\n{catalog}\n"
+        "Use load_skill to get full details when needed."
+    )
+
+
+SYSTEM = build_system()
 
 SUB_SYSTEM = (
     f"你是运行在 {WORKDIR} 下的coding agent。完成指派任务后，给出简要总结，不得转派任务"
@@ -156,6 +211,14 @@ def spawn_subagent(description: str) -> str:
     return result
 
 
+def load_skill(name: str) -> str:
+    """Load full skill content. Lookup via registry — no path traversal."""
+    skill = SKILL_REGISTRY.get(name)
+    if not skill:
+        return f"Skill not found: {name}"
+    return skill["content"]
+
+
 TOOLS = [
     {
         "name": "bash",
@@ -239,6 +302,15 @@ TOOLS = [
             "required": ["description"],
         },
     },
+    {
+        "name": "load_skill",
+        "description": "Load the full content of a skill by name.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+        },
+    },
 ]
 
 TOOL_HANDLERS = {
@@ -249,6 +321,7 @@ TOOL_HANDLERS = {
     "glob": run_glob,
     "todo_write": run_todo_write,
     "task": spawn_subagent,
+    "load_skill": load_skill,
 }
 
 SUB_TOOLS = [
@@ -359,11 +432,10 @@ def agent_loop(messages: list):
 
 
 if __name__ == "__main__":
-
     history = []
     while True:
         try:
-            query = input("\033[36ms04 >> \033[0m")
+            query = input("\033[36ms05 >> \033[0m")
         except (EOFError, KeyboardInterrupt):
             break
         if query.strip().lower() in ("q", "exit", ""):
